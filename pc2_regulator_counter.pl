@@ -2,11 +2,14 @@
 
 use warnings;
 use strict;
+use List::Util qw(shuffle);
+use Getopt::Long;
 
+# ==================================================================== #
 # Script to estimate observed and expected counts of
 # regulatory genes in a sample of differential expressed
 # genes.
-# 
+# ==================================================================== #
 # 1. Download Pathway\ Commons.7.All.BINARY_SIF.hgnc.sif
 # 2. find lines matching geneA	controls-expression-of geneB
 #    e.g. /^([^\t]+)\tcontrols-expression-of\t([^\t\r\n]+)$/
@@ -23,11 +26,33 @@ use strict;
 #    initialised with keys for all geneAs (regulatory genes)
 # 5. write out the observed and random samples of regulatory
 #    gene counts
-# 
+# ==================================================================== #
 
-my %regulated_by;
+
+my $pc2_file = undef;
+my $diff_expr_file = undef;
+my $all_expr_file = undef;
+my $out_prefix = undef;
+my $args = scalar @ARGV;
+my $help = undef;
+GetOptions (
+  "pc2_file=s" => \$pc2_file,
+  "diff_expr_file=s" => \$diff_expr_file,
+  "all_expr_file=s" => \$all_expr_file,
+  "out_prefix=s" => \$out_prefix,
+  "help" => \$help,
+  );
+
+# print usage message if requested or no args supplied
+if(defined($help) || !$args) {
+  &usage;
+  exit(0);
+}
+
+my %regulated_by = &get_regulated_by($pc2_file);
 my %reg_gene_count;
 my %random_gene_count;
+
 
 
 
@@ -37,9 +62,21 @@ sub get_regulated_by{
   my %regulated_by;
   open PC2, "< $pc2_file" or die "Can't read file $pc2_file: $!\n";
   while(<PC2>){
-  
+    
+    if(/^([^\t]+)\tcontrols-expression-of\t([^\t\r\n]+)$/){
+      my $geneA = $1;
+      my $geneB = $2;
+      
+      if(exists $regulated_by{$geneB}){
+        push $regulated_by{$geneB}, $geneA;
+      }
+      else{
+        $regulated_by{$geneB} = ($geneA)
+      }
+    }
   }
-  
+  close PC2;
+  return %regulated_by;
 }
 
 
@@ -47,5 +84,20 @@ sub get_regulated_by{
 
 
 
+sub usage{
+        my $usage =<<END;
+        
+pc2_regulator_counter.pl
 
+usage:  perl pc2_regulator_counter.pl\
+             --pc2_file        path to pc2 sif file
+             --diff_expr_file  path to file listing interest genes
+             --all_expr_file   path to file listing all expressed genes
+             --out_prefix      prefix to add to output files
+or
+        perl pc2_regulator_counter.pl --help # to see this message
 
+END
+        print $usage;
+}
+ 
