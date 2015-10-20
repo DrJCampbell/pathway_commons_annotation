@@ -57,7 +57,7 @@ my %reg_gene_count = &get_reg_gene_count($diff_expr_file, %regulated_by);
 
 open OUT, "> $out_prefix" or die "Can't write to output $out_prefix: $!\n";
 foreach my $key (keys %reg_gene_count){
-  print OUT "$key\t@{ $reg_gene_count{$key} }\n";
+  print OUT "$key\t$reg_gene_count{$key}\n";
 }
 close OUT;
 
@@ -89,7 +89,7 @@ sub get_regulated_by{
 
 sub get_reg_gene_count{
   my $diff_expr_file = shift;
-  my %regulated_by = @_;
+  my (%regulated_by) = @_;
   my %reg_gene_count;
   
   # initialise %reg_gene_count keys
