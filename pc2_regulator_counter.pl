@@ -50,8 +50,16 @@ if(defined($help) || !$args) {
 }
 
 my %regulated_by = &get_regulated_by($pc2_file);
-my %reg_gene_count;
-my %random_gene_count;
+my %reg_gene_count = &get_reg_gene_count($diff_expr_file, %regulated_by);
+
+
+# my %random_gene_count;
+
+open OUT, "> $out_prefix" or die "Can't write to output $out_prefix: $!\n";
+foreach my $key (keys %reg_gene_count){
+  print OUT "$key\t@{ $reg_gene_count{$key} }\n";
+}
+close OUT;
 
 
 
@@ -68,10 +76,10 @@ sub get_regulated_by{
       my $geneB = $2;
       
       if(exists $regulated_by{$geneB}){
-        push $regulated_by{$geneB}, $geneA;
+        push @{ $regulated_by{$geneB} }, $geneA;
       }
       else{
-        $regulated_by{$geneB} = ($geneA)
+        $regulated_by{$geneB} = [$geneA];
       }
     }
   }
@@ -79,7 +87,33 @@ sub get_regulated_by{
   return %regulated_by;
 }
 
-
+sub get_reg_gene_count{
+  my $diff_expr_file = shift;
+  my %regulated_by = @_;
+  my %reg_gene_count;
+  
+  # initialise %reg_gene_count keys
+  # with values from %regulated_by
+  my @geneBs = keys %regulated_by;
+  foreach my $geneB (@geneBs){
+    foreach my $geneA ( @{ $regulated_by{$geneB} }){
+      $reg_gene_count{$geneA} = 0;
+    }
+  }
+  
+  open DEG, "< $diff_expr_file" or die "Can't read from file $diff_expr_file: $!\n";
+  while(<DEG>){
+    next if /^#/;
+    my $geneB = $_;
+    chomp($geneB);
+    my @geneAs = @{ $regulated_by{$geneB} };
+    foreach my $geneA (@geneAs){
+      $reg_gene_count{$geneA} ++;
+    }
+  }
+  close DEG;
+  return %reg_gene_count;
+}
 
 
 
