@@ -89,6 +89,7 @@ sub get_regulated_by{
   return %regulated_by;
 }
 
+
 sub get_reg_gene_count{
   my $diff_expr_file = shift;
   my (%regulated_by) = @_;
@@ -119,7 +120,7 @@ sub get_reg_gene_count{
 
 
 sub get_random_gene_count{
-  my $all_expr_file = shift;
+  my $all_expr_file = shift;  # may not be needed if we take geneB from regulated_by
   my $diff_expr_file = shift;
   my (%regulated_by) = @_;
   my %random_gene_count;
@@ -131,57 +132,61 @@ sub get_random_gene_count{
   open DEG, "< $diff_expr_file" or die "Can't read from file $diff_expr_file: $!\n";
   while(<DEG>){
     next if /^#/;
-    my $count_diff_expr_genes ++;
+    $count_diff_expr_genes ++;
   }
   close DEG;
+  
+  print "sample size is $count_diff_expr_genes\n";
   
   
   # initialise %random_gene_count keys
   # with values from %regulated_by
-  my @geneBs = keys %regulated_by;
-  foreach my $geneB (@geneBs){
+  my @all_geneBs = keys %regulated_by;
+  foreach my $geneB (@all_geneBs){
     foreach my $geneA ( @{ $regulated_by{$geneB} }){
-      $random_gene_count{$geneA} = ();
+      $random_gene_count{$geneA} = [0]; # this is not correct but best I can do for now
     }
   }
+
+  my @all_geneAs = keys %random_gene_count;
   
-  # get list of all expressed genes to sample from
-  my @all_genes;
-  open RAN, "< $all_expr_file" or die "Can't read from file $diff_expr_file: $!\n";
-  while(<RAN>){
-    next if /^#/;
-    my $geneB = $_;
-    chomp($geneB);
-    push @all_genes, $geneB;
-  }
-  close RAN;
+  my $its = 20;
   
-  my $its = 100;
-  
-  # store %random_gene_count needs to be a hash
-  # of arrays where each array is $its long.
-  my %copy_of_random_gene_count = %random_gene_count;
   for(my $i = 0; $i <= $its; $i ++){
-    my %temp_random_gene_count = %copy_of_random_gene_count;
-    my @shuffled_genes = shuffle(@all_genes);
-    my @random_sample = $shuffled_genes[0..$count_diff_expr_genes];
-    foreach my $random_gene (@random_sample){
-      my @random_geneAs = @{ $regulated_by{$random_gene} };
+    
+    my %temp_random_gene_count;
+    my @shuffled_geneBs = shuffle(@all_geneBs);
+    my @random_geneB_sample = @shuffled_geneBs[0..($count_diff_expr_genes-1)];
+    
+    # get geneAs for each random geneB and
+    # increment the count for those geneAs
+    foreach my $random_geneB (@random_geneB_sample){
+      my @random_geneAs = @{ $regulated_by{$random_geneB} };
       foreach my $random_geneA (@random_geneAs){
-        $temp_random_gene_count{$random_geneA} ++;
+        if(exists $temp_random_gene_count{$random_geneA}){
+          $temp_random_gene_count{$random_geneA} ++;
+        }
+        else{
+          $temp_random_gene_count{$random_geneA} = 1;
+        }
       }
     }
-    foreach my $sampled_random_gene (keys %temp_random_gene_count){
-      push @{ $random_gene_count{$sampled_random_gene} }, $temp_random_gene_count{$sampled_random_gene};
-      #push @{ $random_gene_count{$sampled_random_gene} }, 1;
-    } 
+    
+    # save the counts for this round in %random_gene_count
+    foreach my $geneA (@all_geneAs){
+#   foreach my $sampled_random_gene (keys %temp_random_gene_count){
+      if(exists $random_gene_count{$geneA}){
+        my $sampled_random_gene_count = $temp_random_gene_count{$geneA};
+        push @{ $random_gene_count{$geneA} }, $sampled_random_gene_count;
+      }
+      else{
+        my $sampled_random_gene_count = 0;
+        push @{ $random_gene_count{$geneA} }, $sampled_random_gene_count;
+      }
+    }
   }
   return %random_gene_count;
 }
-
-
-
-
 
 sub usage{
         my $usage =<<END;
