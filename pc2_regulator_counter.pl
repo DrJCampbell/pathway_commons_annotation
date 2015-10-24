@@ -51,7 +51,7 @@ if(defined($help) || !$args) {
 
 my %regulated_by = &get_regulated_by($pc2_file);
 my %reg_gene_count = &get_reg_gene_count($diff_expr_file, %regulated_by);
-my %random_gene_count = &get_random_gene_count($all_expr_file, $diff_expr_file, %regulated_by);
+my %random_gene_count = &get_random_gene_count($diff_expr_file, %regulated_by);
 
 open OUTOBS, "> $out_prefix.obsereved.txt" or die "Can't write to output $out_prefix.observed.txt: $!\n";
 foreach my $key (keys %reg_gene_count){
@@ -109,7 +109,13 @@ sub get_reg_gene_count{
     next if /^#/;
     my $geneB = $_;
     chomp($geneB);
-    my @geneAs = @{ $regulated_by{$geneB} };
+    my @geneAs = ();
+    if(exists $regulated_by{$geneB}){
+      @geneAs = @{ $regulated_by{$geneB} }
+    }
+    else{
+      next;
+    }
     foreach my $geneA (@geneAs){
       $reg_gene_count{$geneA} ++;
     }
@@ -120,7 +126,6 @@ sub get_reg_gene_count{
 
 
 sub get_random_gene_count{
-  my $all_expr_file = shift;  # may not be needed if we take geneB from regulated_by
   my $diff_expr_file = shift;
   my (%regulated_by) = @_;
   my %random_gene_count;
@@ -136,9 +141,6 @@ sub get_random_gene_count{
   }
   close DEG;
   
-  print "sample size is $count_diff_expr_genes\n";
-  
-  
   # initialise %random_gene_count keys
   # with values from %regulated_by
   my @all_geneBs = keys %regulated_by;
@@ -150,9 +152,9 @@ sub get_random_gene_count{
 
   my @all_geneAs = keys %random_gene_count;
   
-  my $its = 20;
+  my $its = 1000;
   
-  for(my $i = 0; $i <= $its; $i ++){
+  for(my $i = 0; $i < $its; $i ++){
     
     my %temp_random_gene_count;
     my @shuffled_geneBs = shuffle(@all_geneBs);
@@ -174,8 +176,7 @@ sub get_random_gene_count{
     
     # save the counts for this round in %random_gene_count
     foreach my $geneA (@all_geneAs){
-#   foreach my $sampled_random_gene (keys %temp_random_gene_count){
-      if(exists $random_gene_count{$geneA}){
+      if(exists $temp_random_gene_count{$geneA}){
         my $sampled_random_gene_count = $temp_random_gene_count{$geneA};
         push @{ $random_gene_count{$geneA} }, $sampled_random_gene_count;
       }
