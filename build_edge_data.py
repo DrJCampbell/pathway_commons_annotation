@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 import argparse
+import networkx as nx
+import matplotlib.pyplot as plt
 
 # get file names from the command line args
 parser = argparse.ArgumentParser()
