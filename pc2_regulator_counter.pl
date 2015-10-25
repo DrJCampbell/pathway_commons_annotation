@@ -49,23 +49,42 @@ if(defined($help) || !$args) {
   exit(0);
 }
 
-my %regulated_by = &get_regulated_by($pc2_file);
-my %reg_gene_count = &get_reg_gene_count($diff_expr_file, %regulated_by);
-my %random_gene_count = &get_random_gene_count($diff_expr_file, %regulated_by);
 
-open OUTOBS, "> $out_prefix.obsereved.txt" or die "Can't write to output $out_prefix.observed.txt: $!\n";
+# run the set of subroutines below to get the list of 
+# regulatory geneAs associated with each regulated 
+# geneB. Then 1) count the number time each regulatory
+# geneA occurs in the real set of regulated geneBs and 
+# also for 1000 random samples of genes to get a background
+# rate.
+my %regulated_by = &get_regulated_by($pc2_file);
+
+my %reg_gene_count = &get_reg_gene_count(
+  $diff_expr_file,
+  %regulated_by);
+
+my %random_gene_count = &get_random_gene_count(
+  $diff_expr_file,
+  %regulated_by);
+
+# write out the real and random regulatory geneA counts.
+open OUTOBS, "> $out_prefix.obsereved.txt"
+  or die "Can't write to output $out_prefix.observed.txt: $!\n";
 foreach my $key (keys %reg_gene_count){
   print OUTOBS "$key\t$reg_gene_count{$key}\n";
 }
 close OUTOBS;
 
-open OUTRAN, "> $out_prefix.random.txt" or die "Can't write to output $out_prefix.random.txt: $!\n";
+open OUTRAN, "> $out_prefix.random.txt"
+  or die "Can't write to output $out_prefix.random.txt: $!\n";
 foreach my $key (keys %random_gene_count){
   print OUTRAN "$key\t" . join("\t", @{ $random_gene_count{$key} }) . "\n";
 }
 close OUTRAN;
 
 
+# =========== #
+# subroutines
+# =========== #
 
 sub get_regulated_by{
   my $pc2_file = shift;
@@ -194,15 +213,14 @@ sub usage{
         
 pc2_regulator_counter.pl
 
-usage:  perl pc2_regulator_counter.pl\
+usage:  perl pc2_regulator_counter.pl
              --pc2_file        path to pc2 sif file
              --diff_expr_file  path to file listing interest genes
              --all_expr_file   path to file listing all expressed genes
              --out_prefix      prefix to add to output files
 or
-        perl pc2_regulator_counter.pl --help # to see this message
+        perl pc2_regulator_counter.pl --help   to see this message
 
 END
         print $usage;
 }
- 
